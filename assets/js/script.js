@@ -5,22 +5,43 @@ const resultsModal = new bootstrap.Modal(document.getElementById("resultsModal")
 document.getElementById("status").addEventListener("click", e => getStatus(e));
 document.getElementById("submit").addEventListener("click", e => postForm(e));
 
-async function postForm(e){
-    const form = new FormData(document.getElementById("checksform"));
+function processOptions(form) {
+    let optArray = [];
+
+    for (let e of form.entries()) {
+        if (e[0] === "options") {
+            optArray.push(e[1]);
+        }
+    }
+
+    form.delete("options");
+
+    form.append("options", optArray.join());
+
+    return form;
+}
+
+async function postForm(e) {
+
+    const form = processOptions(new FormData(document.getElementById("checksform")));
 
     const response = await fetch(API_URL, {
-                        method: "POST",
-                        headers: {
-                                    "Authorization": API_KEY,
-                                 }, body: form,
-                        });
+        method: "POST",
+        headers: {
+            "Authorization": API_KEY,
+        },
+        body: form,
+    });
+
     const data = await response.json();
 
     if (response.ok) {
         displayErrors(data);
     } else {
+        displayException(data);
         throw new Error(data.error);
     }
+
 }
 
 async function getStatus(e) {
@@ -32,10 +53,25 @@ async function getStatus(e) {
     const data = await response.json();
 
     if (response.ok) {
-        displayStatus(data.expiry);
-    }else{
-        throw new Error(data.Error)
+        displayStatus(data);
+    } else {
+        displayException(data);
+        throw new Error(data.error);
     }
+
+}
+
+function displayException(data) {
+
+    let heading = `<div class="error-heading">An Exception Occurred</div>`;
+
+    results = `<div>The API returned status code ${data.status_code}</div>`;
+    results += `<div>Error number: <strong>${data.error_no}</strong></div>`;
+    results += `<div>Error text: <strong>${data.error}</strong></div>`;
+
+    document.getElementById("resultsModalTitle").innerText = heading;
+    document.getElementById("results-content").innerHTML = results;
+    resultsModal.show();
 }
 
 function displayErrors(data) {
@@ -59,13 +95,14 @@ function displayErrors(data) {
     resultsModal.show();
 }
 
-function displayStatus(data){
+function displayStatus(data) {
+
     let heading = "API Key Status";
     let results = `<div>Your key is valid until</div>`;
     results += `<div class="key-status">${data.expiry}</div>`;
 
     document.getElementById("resultsModalTitle").innerText = heading;
     document.getElementById("results-content").innerHTML = results;
-
     resultsModal.show();
+
 }
